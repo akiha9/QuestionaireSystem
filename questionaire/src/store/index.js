@@ -11,6 +11,7 @@ const store = new Vuex.Store({
       index: "",
       content: "",
       optionList: [""],
+      relative: [],
       typeList: [["", "", ""]],
     },
   },
@@ -28,12 +29,21 @@ const store = new Vuex.Store({
       state.form = _.cloneDeep(payload.form);
     },
 
+    initRelative(state) {
+      if (state.form.relative.length === 0) {
+        state.form.optionList.forEach((option) => {
+          state.form.relative.push([]);
+        });
+      }
+    },
+
     clearForm(state) {
       state.form = {
         type: "",
         index: "",
         content: "",
         optionList: [""],
+        relative: [],
         typeList: [["", "", ""]],
       };
     },

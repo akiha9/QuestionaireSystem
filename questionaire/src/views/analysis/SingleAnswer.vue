@@ -1,33 +1,14 @@
 <template>
   <div>
-    <template v-if="!isRelease">
-      <EditHeader :type="1" @backToEdit="backToEdit" @release="release">
+    <template>
+      <Header>
         <div class="preview">
           <SheetView
-            :type="0"
+            :type="2"
             :questionList="questionList"
             :sheet="sheet"
+            :answer="answerList"
           ></SheetView>
-          <ReleaseForm
-            :sheetId="id"
-            :visible="releaseFormVisible"
-            @cancelRelease="cancelRelease"
-          ></ReleaseForm>
-        </div> </EditHeader
-    ></template>
-    <template v-else>
-      <Header :type="1" @backToEdit="backToEdit" @release="release">
-        <div class="preview">
-          <SheetView
-            :type="0"
-            :questionList="questionList"
-            :sheet="sheet"
-          ></SheetView>
-          <ReleaseForm
-            :sheetId="id"
-            :visible="releaseFormVisible"
-            @cancelRelease="cancelRelease"
-          ></ReleaseForm>
         </div> </Header
     ></template>
     <Footer> </Footer>
@@ -35,55 +16,39 @@
 </template>
 
 <script>
-import EditHeader from "@/components/layout/EditHeader.vue";
 import Header from "@/components/layout/Header.vue";
 import Footer from "@/components/layout/Footer.vue";
 import SheetView from "@/components/answer/SheetView.vue";
-import ReleaseForm from "@/components/edit/ReleaseForm.vue";
 
 export default {
   components: {
-    EditHeader,
     Footer,
     Header,
     SheetView,
-    ReleaseForm,
   },
   data() {
     return {
       id: "",
+      answerId: "",
       isRelease: false,
       sheet: {},
       releaseFormVisible: false,
       isOwner: false,
       questionList: [],
+      answerList: [],
+      count: 1,
     };
   },
 
   created() {
-    this.id = this.$route.query.id;
-    this.getBasicInfo();
+    this.id = this.$route.params.id;
+    this.answerId = this.$route.query.answerId;
     this.getQuestionList();
+    this.getBasicInfo();
+    this.getAnswer();
   },
 
   methods: {
-    backToEdit() {
-      this.$router.push({
-        name: "Edit",
-        query: {
-          id: this.id,
-        },
-      });
-    },
-
-    release() {
-      this.releaseFormVisible = true;
-    },
-
-    cancelRelease() {
-      this.releaseFormVisible = false;
-    },
-
     getQuestionList() {
       this.$axios
         .get(`/api/sheets/${this.id}/list`)
@@ -105,16 +70,29 @@ export default {
           if (ret.data.code === 200) {
             this.sheet = ret.data.data.sheetInfo;
             this.isOwner = ret.data.data.isOwner;
-            if (this.isOwner === false) {
+            if (this.isOwner === false || this.sheet.statusIndex === 2) {
               this.$router.replace("/");
               this.$showMessage({ msg: "没有访问权限" });
             }
-            if (this.sheet.statusIndex === 1) {
-              this.isRelease = true;
-            }
           } else {
             this.$showMessage(ret.data);
-            this.$router.replace("/");
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          this.$showMessage({ msg: err });
+        });
+    },
+
+    getAnswer() {
+      this.$axios
+        .get(`/api/sheets/${this.id}/answer`, {
+          params: { answerId: this.answerId },
+        })
+        .then((ret) => {
+          if (ret.data.code === 200) {
+            this.answerList = ret.data.data.answerList;
+            this.sortAnswer();
           }
         })
         .catch((err) => {
@@ -122,6 +100,23 @@ export default {
           this.$showMessage({ msg: err });
           this.$router.replace("/");
         });
+    },
+
+    sortAnswer() {
+      let newList = [];
+      this.questionList.forEach((question, questionIndex) => {
+        let find = false;
+        this.answerList.forEach((answer) => {
+          if (question._id == answer.questionId) {
+            newList.push(answer);
+            find = true;
+          }
+        });
+        if (!find) {
+          newList.push([]);
+        }
+      });
+      this.answerList = newList;
     },
   },
 };

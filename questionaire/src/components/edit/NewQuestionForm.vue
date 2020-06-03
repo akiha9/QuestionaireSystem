@@ -1,6 +1,11 @@
 <template>
   <div>
-    <el-dialog :visible.sync="$store.state.addQuestionDialogVisible" width="40%" center>
+    <el-dialog
+      title="添加问题"
+      :visible.sync="$store.state.addQuestionDialogVisible"
+      width="40%"
+      center
+    >
       <el-form :model="form" :ref="form" :rules="questionRules">
         <el-form-item label="题目:" prop="content">
           <el-input
@@ -11,10 +16,7 @@
             type="textarea"
           ></el-input>
         </el-form-item>
-        <template v-if="
-            form.type === 0 ||
-            form.type === 1
-          ">
+        <template v-if="form.type === 0 || form.type === 1">
           <el-form-item
             v-for="(option, optionIndex) in form.optionList"
             :key="optionIndex"
@@ -38,31 +40,46 @@
                 </a>
               </div>
             </div>
-            <el-input v-model="form.optionList[optionIndex]" placeholder="请输入选项"></el-input>
+            <el-input
+              v-model="form.optionList[optionIndex]"
+              placeholder="请输入选项"
+            ></el-input>
           </el-form-item>
         </template>
         <template v-if="form.type === 2 || form.type === 3">
-          <el-row :gutter="20" v-for="(blank, blankIndex) in form.typeList" :key="blankIndex">
+          <el-row
+            :gutter="20"
+            v-for="(blank, blankIndex) in form.typeList"
+            :key="blankIndex"
+          >
             <el-col :span="8">
               <el-form-item
                 label="类型:"
                 :prop="`typeList.${blankIndex}.${0}`"
                 :rules="questionRules.type"
               >
-                <el-select v-model="form.typeList[blankIndex][0]" placeholder="请选择" size="small">
+                <el-select
+                  v-model="form.typeList[blankIndex][0]"
+                  placeholder="请选择"
+                  size="small"
+                >
                   <el-option
                     v-for="type in types"
                     :key="type.value"
                     :label="type.label"
                     :value="type.value"
-                  >{{ type.label }}</el-option>
+                    >{{ type.label }}</el-option
+                  >
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item
                 label="最小值:"
-                v-if="form.typeList[blankIndex][0] === 0 ||form.typeList[blankIndex][0] === 1"
+                v-if="
+                  form.typeList[blankIndex][0] === 0 ||
+                    form.typeList[blankIndex][0] === 1
+                "
               >
                 <el-input-number
                   v-if="form.typeList[blankIndex][0] === 0"
@@ -80,7 +97,10 @@
             <el-col :span="8">
               <el-form-item
                 label="最大值:"
-                v-if="form.typeList[blankIndex][0] === 0 ||form.typeList[blankIndex][0] === 1"
+                v-if="
+                  form.typeList[blankIndex][0] === 0 ||
+                    form.typeList[blankIndex][0] === 1
+                "
               >
                 <el-input-number
                   v-if="form.typeList[blankIndex][0] === 0"
@@ -98,10 +118,7 @@
           </el-row>
         </template>
       </el-form>
-      <div v-if="
-          form.type === 0 ||
-          form.type === 1
-        ">
+      <div v-if="form.type === 0 || form.type === 1">
         <a href="javascript:;" @click="addOption(form.optionList.length - 1)">
           <i class="el-icon-circle-plus-outline"></i> 添加选项
         </a>
@@ -121,7 +138,7 @@ import _ from "lodash";
 export default {
   data() {
     let checkOptions = (rule, value, callback) => {
-      if (!value) {
+      if (!value || value.replace(/ /g, "") === "") {
         return callback(new Error("选项不能为空"));
       }
       setTimeout(() => {
@@ -134,7 +151,7 @@ export default {
     };
 
     let checkContent = (rule, value, callback) => {
-      if (!value) {
+      if (!value || value.replace(/ /g, "") === "") {
         return callback(new Error("题目不能为空"));
       }
       setTimeout(() => {
@@ -160,21 +177,21 @@ export default {
         { value: 0, label: "整数" },
         { value: 1, label: "小数" },
         { value: 2, label: "单行文本" },
-        { value: 3, label: "多行文本" }
+        { value: 3, label: "多行文本" },
       ],
       questionRules: {
         content: [
-          { required: false, validator: checkContent, trigger: "blur" }
+          { required: false, validator: checkContent, trigger: "blur" },
         ],
         option: [{ required: false, validator: checkOptions, trigger: "blur" }],
-        type: [{ required: false, validator: checkType, triggger: "blur" }]
-      }
+        type: [{ required: false, validator: checkType, triggger: "blur" }],
+      },
     };
   },
   watch: {
     newContent() {
       this.debouncedCreate();
-    }
+    },
   },
   created() {
     this.debouncedCreate = _.debounce(this.createFill, 1000);
@@ -184,7 +201,7 @@ export default {
 
     newContent() {
       return this.form.content;
-    }
+    },
   },
   methods: {
     cancelAdd(formName) {
@@ -193,10 +210,10 @@ export default {
     },
 
     submitAdd(formName) {
-      this.$refs[formName].validate(valid => {
+      this.$refs[formName].validate((valid) => {
         if (valid) {
           if (this.form.type === 2 || this.form.type === 3) {
-            this.form.typeList.forEach(type => {
+            this.form.typeList.forEach((type) => {
               if (type[0] === 0 || type[0] === 1) {
                 if (type[1] > type[2]) {
                   [type[1], type[2]] = [type[2], type[1]];
@@ -263,8 +280,8 @@ export default {
         }
         this.form.typeList.splice(oldLen, 0, ...newTypes);
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
