@@ -2,20 +2,40 @@
   <div>
     <Header>
       <div class="regist">
-        <div :style="{'padding-top': '100px'}">
+        <div :style="{ 'padding-top': '100px' }">
           <div class="form-container">
-            <el-form :model="form" :ref="form" :rules="rules" class="form" label-width="80px">
+            <el-form
+              :model="form"
+              :ref="form"
+              :rules="rules"
+              class="form"
+              label-width="80px"
+            >
               <el-form-item label="用户名" prop="name">
-                <el-input v-model="form.name" placeholder="请输入用户名"></el-input>
+                <el-input
+                  v-model="form.name"
+                  placeholder="请输入用户名"
+                ></el-input>
               </el-form-item>
               <el-form-item label="账号" prop="account">
-                <el-input v-model="form.account" placeholder="请输入邮箱注册"></el-input>
+                <el-input
+                  v-model="form.account"
+                  placeholder="请输入邮箱注册"
+                ></el-input>
               </el-form-item>
               <el-form-item label="密码" prop="password">
-                <el-input v-model="form.password" placeholder="请输入密码" show-password></el-input>
+                <el-input
+                  v-model="form.password"
+                  placeholder="请输入密码"
+                  show-password
+                ></el-input>
               </el-form-item>
               <el-form-item label="确认密码" prop="repeat">
-                <el-input v-model="form.repeat" placeholder="请重复密码" show-password></el-input>
+                <el-input
+                  v-model="form.repeat"
+                  placeholder="请重复密码"
+                  show-password
+                ></el-input>
               </el-form-item>
             </el-form>
             <span slot="footer" class="dialog-footer">
@@ -37,7 +57,7 @@ export default {
   name: "Login",
   components: {
     Header,
-    Footer
+    Footer,
   },
   data() {
     let checkAccount = (rule, value, callback) => {
@@ -89,7 +109,11 @@ export default {
         return callback(new Error("请输入用户名"));
       }
       setTimeout(() => {
-        callback();
+        if (value.replace(/ /g, "") === "") {
+          return callback(new Error("用户名不能为空"));
+        } else {
+          callback();
+        }
       });
     };
 
@@ -98,33 +122,47 @@ export default {
         account: "",
         password: "",
         repeat: "",
-        name: ""
+        name: "",
       },
       rules: {
         account: [
-          { required: false, validator: checkAccount, trigger: "blur" }
+          { required: false, validator: checkAccount, trigger: "blur" },
         ],
         password: [
-          { required: false, validator: checkPassword, trigger: "blur" }
+          { required: false, validator: checkPassword, trigger: "blur" },
         ],
         repeat: [{ required: false, validator: checkRepeat, trigger: "blur" }],
-        name: [{ required: false, validator: checkName, trigger: "blur" }]
-      }
+        name: [{ required: false, validator: checkName, trigger: "blur" }],
+      },
     };
   },
 
   methods: {
     regist(formName) {
-      this.$refs[formName].validate(valid => {
+      this.$refs[formName].validate((valid) => {
         if (valid) {
-          this.$router.replace("/");
+          this.$axios
+            .post("/api/users/regist", {
+              name: this.form.name,
+              email: this.form.account,
+              password: this.form.password,
+            })
+            .then((ret) => {
+              this.$showMessage(ret.data);
+              if (ret.data.code === 200) {
+                this.$router.replace("/login");
+              }
+            })
+            .catch((err) => {
+              console.log(err);
+              this.$showMessage({ msg: err });
+            });
         }
       });
-    }
-  }
+    },
+  },
 };
 </script>
-
 
 <style scoped>
 .regist {

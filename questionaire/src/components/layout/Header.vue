@@ -8,18 +8,33 @@
       <div class="user fr">
         <el-dropdown>
           <span class="el-dropdown-link">
-            akiha
+            {{ userName }}
             <i class="el-icon-arrow-down el-icon--right"></i>
           </span>
           <el-dropdown-menu slot="dropdown">
             <el-dropdown-item icon="el-icon-user">用户信息</el-dropdown-item>
             <el-dropdown-item icon="el-icon-phone">客服中心</el-dropdown-item>
-            <el-dropdown-item icon="el-icon-switch-button">退出登录</el-dropdown-item>
+            <template v-if="isLogin"
+              ><el-dropdown-item
+                icon="el-icon-switch-button"
+                @click.native="logout"
+                >退出登录</el-dropdown-item
+              ></template
+            >
+            <template v-else>
+              <el-dropdown-item
+                icon="el-icon-switch-button"
+                @click.native="toLogin"
+                >登录
+              </el-dropdown-item>
+            </template>
           </el-dropdown-menu>
         </el-dropdown>
       </div>
       <div class="home fr">
-        <a href="javascript:;">我的问卷</a>
+        <router-link :to="{ name: 'Home' }">
+          <a href="javascript:;">我的问卷</a>
+        </router-link>
       </div>
       <div class="home-icon fr">
         <i class="el-icon-s-home"></i>
@@ -32,7 +47,47 @@
 </template>
 
 <script>
-export default {};
+export default {
+  data() {
+    return {
+      userName: "未登录",
+      isLogin: false,
+    };
+  },
+  created() {
+    const token = localStorage.getItem("token");
+    if (token === null || token === undefined) {
+      this.isLogin = false;
+    } else {
+      this.isLogin = true;
+      this.getUserInfo();
+    }
+  },
+  methods: {
+    getUserInfo() {
+      this.$axios
+        .get(`/api/users`)
+        .then((ret) => {
+          if (ret.data.code === 200) {
+            this.userName = ret.data.data.user.name;
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    },
+
+    logout() {
+      localStorage.removeItem("token");
+      this.isLogin = false;
+      this.$router.replace("/login");
+    },
+
+    toLogin() {
+      this.$router.replace("/login");
+    },
+  },
+};
 </script>
 
 <style scoped>

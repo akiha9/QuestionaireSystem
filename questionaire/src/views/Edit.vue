@@ -1,6 +1,11 @@
 <template>
   <div>
-    <Header>
+    <EditHeader
+      :type="0"
+      @save="autoSave"
+      @release="release"
+      @preview="preview"
+    >
       <div class="edit">
         <div class="aside">
           <div class="aside-content">
@@ -64,17 +69,15 @@
           <div :style="{ 'padding-top': '10px' }"></div>
           <div class="edit-area">
             <div class="title" @click="changeTitleDialogVisible = true">
-              <div class="sheet-name">{{ sheet.sheetName }}</div>
+              <div class="sheet-name">{{ sheet.name }}</div>
               <div class="sheet-description">
                 {{
-                sheet.sheetDescription === ""
-                ? "添加问卷说明"
-                : sheet.sheetDescription
+                  sheet.description === "" ? "添加问卷说明" : sheet.description
                 }}
               </div>
             </div>
             <div class="first-line">
-              <div class="number">[共 {{ sheet.questionList.length }} 题]</div>
+              <div class="number">[共 {{ this.questionList.length }} 题]</div>
               <div
                 style="margin-left: 50px;"
                 class="add"
@@ -83,13 +86,18 @@
               >
                 <a href="javascript:;">在此题后插入新题</a>
               </div>
-              <div style="margin-left: 50px;" class="add" v-else @click="insertIndex = ''">
+              <div
+                style="margin-left: 50px;"
+                class="add"
+                v-else
+                @click="insertIndex = ''"
+              >
                 <a href="javascript:;">取消插入点</a>
               </div>
             </div>
             <div
               class="single-question"
-              v-for="(question, index) in sheet.questionList"
+              v-for="(question, index) in questionList"
               :key="index"
             >
               <div class="question-content">
@@ -110,7 +118,11 @@
                   </div>
                 </template>
                 <template v-if="question.type === 2 || question.type === 3">
-                  <div class="fill" v-for="(type, typeIndex) in question.typeList" :key="typeIndex">
+                  <div
+                    class="fill"
+                    v-for="(type, typeIndex) in question.typeList"
+                    :key="typeIndex"
+                  >
                     <el-input
                       v-if="type[0] === 2 || type[0] === 3"
                       size="small"
@@ -163,6 +175,13 @@
                     <a href="javascript:;">编辑</a>
                   </div>
                   <div
+                    class="add fr"
+                    v-if="question.type === 0"
+                    @click="clickAddRelative(index)"
+                  >
+                    <a href="javascript:;">添加依赖</a>
+                  </div>
+                  <div
                     class="add fl"
                     v-if="insertIndex !== index + 1"
                     @click="insertIndex = index + 1"
@@ -178,10 +197,18 @@
           </div>
         </div>
         <div>
-          <el-dialog :visible.sync="changeTitleDialogVisible" :width="'40%'">
+          <el-dialog
+            title="编辑标题"
+            :visible.sync="changeTitleDialogVisible"
+            :width="'40%'"
+          >
             <el-form :model="form" :rules="titleRules" :ref="form">
               <el-form-item label="标题:" prop="sheetName">
-                <el-input v-model="form.sheetName" autocomplete="off" placeholder="请输入问卷标题"></el-input>
+                <el-input
+                  v-model="form.sheetName"
+                  autocomplete="off"
+                  placeholder="请输入问卷标题"
+                ></el-input>
               </el-form-item>
               <el-form-item label="描述:" prop="sheetDescription">
                 <el-input
@@ -195,33 +222,50 @@
             </el-form>
             <div slot="footer" class="dialog-footer">
               <el-button @click="cancelChangeTitle(form)">取 消</el-button>
-              <el-button type="primary" @click="changeTitle(form)">确 定</el-button>
+              <el-button type="primary" @click="changeTitle(form)"
+                >确 定</el-button
+              >
             </div>
           </el-dialog>
         </div>
         <Form @submit="handleSubmit"></Form>
+        <ReleaseForm
+          @cancelRelease="releaseDialogVisible = false"
+          :sheetId="id"
+          :visible="releaseDialogVisible"
+        ></ReleaseForm>
+        <RelativeForm
+          @cancelAddRelative="cancelAddRelative"
+          @handleSubmit="handleSubmit"
+          :visible="relativeDialogVisible"
+          :questionList="questionList"
+        ></RelativeForm>
       </div>
-    </Header>
+    </EditHeader>
     <Footer></Footer>
   </div>
 </template>
 
 <script>
-import Header from "@/components/layout/Header.vue";
+import EditHeader from "@/components/layout/EditHeader.vue";
+import ReleaseForm from "@/components/edit/ReleaseForm.vue";
 import Footer from "@/components/layout/Footer.vue";
 import Form from "@/components/edit/NewQuestionForm.vue";
+import RelativeForm from "@/components/edit/RelativeForm.vue";
 import _ from "lodash";
 
 export default {
   name: "Edit",
   components: {
-    Header,
+    EditHeader,
+    ReleaseForm,
+    RelativeForm,
     Footer,
-    Form
+    Form,
   },
   data() {
     let checkTitle = (rule, value, callback) => {
-      if (!value) {
+      if (!value || value.replace(/ /g, "") === "") {
         return callback(new Error("标题不能为空"));
       }
       setTimeout(() => {
@@ -244,117 +288,159 @@ export default {
     };
 
     return {
+      id: "",
       showSelect: false,
       showFill: false,
       showRate: false,
       showHigh: false,
       changeTitleDialogVisible: false,
+      releaseDialogVisible: false,
+      relativeDialogVisible: false,
       insertIndex: "",
       modifiedIndex: "",
       tmp: "",
-      sheet: {
-        sheetName: "问卷1",
-        sheetDescription: "一个测试问卷",
-        questionList: [
-          {
-            type: 0,
-            index: 0,
-            content:
-              "请问您的性别是请问您的性别是请问您的性别是请问您的性别是请问您的性别是请问您的性别是请问您的性别是请问您的性别是请问您的性别是",
-            optionList: [
-              "男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男男",
-              "女",
-              "其他"
-            ],
-            typeList: []
-          },
-          {
-            type: 1,
-            index: 1,
-            content: "请问您的性别是",
-            optionList: ["男", "女", "其他"],
-            typeList: []
-          },
-          {
-            type: 4,
-            index: 2,
-            content: "对我们的服务打分",
-            optionList: [],
-            typeList: []
-          },
-          {
-            type: 5,
-            index: 3,
-            content: "请问您的当前位置是",
-            optionList: [],
-            typeList: []
-          },
-          {
-            type: 2,
-            index: 4,
-            content: "请问您的性别是",
-            optionList: [],
-            typeList: [[2]]
-          },
-          {
-            type: 2,
-            index: 5,
-            content: "请问您的年龄是",
-            optionList: [],
-            typeList: [[0, 1, 100]]
-          },
-          {
-            type: 3,
-            index: 6,
-            content:
-              "请问您的性别是___，请问您的年龄是___，请问您的学校是____。",
-            optionList: [],
-            typeList: [[2], [0, 20, 100], [3]]
-          },
-          {
-            type: 0,
-            index: 7,
-            content: "请问您的性别是",
-            optionList: ["男", "女", "其他"],
-            typeList: []
-          }
-        ]
-      },
+      isOwner: false,
+      sheet: {},
+      questionList: [],
+      relativeList: [],
       form: {
         sheetName: "",
-        sheetDescription: ""
+        sheetDescription: "",
       },
-      newQuestionForm: {},
       titleRules: {
         sheetName: [
-          { required: false, validator: checkTitle, trigger: "blur" }
+          { required: false, validator: checkTitle, trigger: "blur" },
         ],
         sheetDescription: [
-          { required: false, validator: checkDescription, trigger: "blur" }
-        ]
-      }
+          { required: false, validator: checkDescription, trigger: "blur" },
+        ],
+      },
     };
   },
-  mounted() {},
+  created() {
+    this.id = this.$route.query.id;
+    this.getBasicInfo();
+    this.getQuestionList();
+  },
 
   methods: {
+    autoSave() {
+      this.$axios
+        .put(`/api/sheets/${this.id}/list`, {
+          updateList: this.questionList,
+        })
+        .then((ret) => {
+          if (ret.data.code === 200) {
+            this.$showMessage({ code: 200, msg: "保存成功" });
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          this.$showMessage({ msg: err });
+        });
+    },
+
+    preview() {
+      this.$router.push({
+        name: "Preview",
+        query: {
+          id: this.id,
+        },
+      });
+    },
+
+    release() {
+      this.releaseDialogVisible = true;
+    },
+
+    getBasicInfo() {
+      this.$axios
+        .get(`/api/sheets/${this.id}/info`)
+        .then((ret) => {
+          if (ret.data.code === 200) {
+            this.sheet = ret.data.data.sheetInfo;
+            this.isOwner = ret.data.data.isOwner;
+            if (this.isOwner === false) {
+              this.$router.replace("/");
+              this.$showMessage({ code: 403, msg: "没有访问权限" });
+            }
+            if (this.sheet.statusIndex === 1) {
+              this.$router.replace("/");
+              this.$showMessage({ code: 403, msg: "问卷已经发布" });
+            }
+          } else {
+            this.$showMessage(ret.data);
+            this.$router.replace("/");
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          this.$showMessage({ msg: err });
+          this.$router.replace("/");
+        });
+    },
+
+    getQuestionList() {
+      this.$axios
+        .get(`/api/sheets/${this.id}/list`)
+        .then((ret) => {
+          if (ret.data.code === 200) {
+            this.questionList = ret.data.data.questionList;
+            this.constructRelativeList();
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          this.$showMessage({ msg: err });
+        });
+    },
+
+    constructRelativeList() {
+      this.relativeList = [];
+      this.questionList.forEach((question, questionIndex) => {
+        question.relative.forEach((relatives) => {
+          relatives.forEach((relative) => {
+            if (this.relativeList.indexOf(questionIndex) === -1) {
+              this.relativeList.push(questionIndex);
+            }
+            if (this.relativeList.indexOf(relative === -1)) {
+              this.relativeList.push(relative);
+            }
+          });
+        });
+      });
+    },
+
     resetForm(formName) {
       this.$refs[formName].resetFields();
     },
 
-    resetIndex() {
-      this.sheet.questionList.forEach((question, index) => {
+    // 调整index
+    resetIndex(list) {
+      list.forEach((question, index) => {
         question.index = index;
       });
     },
 
     changeTitle(formName) {
-      this.$refs[formName].validate(valid => {
+      this.$refs[formName].validate((valid) => {
         if (valid) {
-          this.changeTitleDialogVisible = false;
-          this.sheet.sheetName = this.form.sheetName;
-          this.sheet.sheetDescription = this.form.sheetDescription;
-          this.resetForm(formName);
+          this.$axios
+            .put(`/api/sheets/${this.id}/info/update`, {
+              name: this.form.sheetName,
+              description: this.form.sheetDescription,
+            })
+            .then((ret) => {
+              if (ret.data.code === 200) {
+                this.getBasicInfo();
+                this.changeTitleDialogVisible = false;
+                this.resetForm(formName);
+              }
+            })
+            .catch((err) => {
+              console.log(err);
+              this.$showMessage({ msg: err });
+            });
         }
       });
     },
@@ -373,21 +459,68 @@ export default {
     clickEditQuestion(index) {
       this.modifiedIndex = index;
       this.$store.commit("changeForm", {
-        form: this.sheet.questionList[index]
+        form: this.questionList[index],
       });
       this.$store.commit("switchVisibility");
     },
 
+    clickAddRelative(index) {
+      this.modifiedIndex = index;
+      this.$store.commit("changeForm", {
+        form: this.questionList[index],
+      });
+      this.$store.commit("initRelative");
+      this.relativeDialogVisible = true;
+    },
+
+    // 删除，需要调整其他index，先调整index确保数据库中的index是正确的
     deleteQuestion(index) {
-      this.sheet.questionList.splice(index, 1);
+      if (this.relativeList.indexOf(index) !== -1) {
+        this.$showMessage({ code: -1, msg: "题目间存在依赖关系" });
+        return;
+      }
+      const deleteId = this.questionList[index]._id;
+      const updateList = _.cloneDeep(this.questionList);
+      updateList.splice(index, 1);
+      this.resetIndex(updateList);
+
+      this.$axios
+        .put(`/api/sheets/${this.id}/list`, { updateList: updateList })
+        .then((ret) => {
+          if (ret.data.code === 200) {
+            this.$axios
+              .get(`/api/sheets/${this.id}/list/${deleteId}/delete`)
+              .then((ret) => {
+                this.$showMessage(ret.data);
+                if (ret.data.code === 200) {
+                  this.getQuestionList();
+                }
+              })
+              .catch((err) => {
+                console.log(err);
+                this.$showMessage({ msg: err });
+              });
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          this.$showMessage({ msg: err });
+        });
     },
 
     moveUp(index) {
       if (index === 0) {
         return;
       } else {
-        let tmp = this.sheet.questionList[index];
-        let list = this.sheet.questionList;
+        if (
+          this.relativeList.indexOf(index) !== -1 ||
+          this.relativeList.indexOf(index - 1) !== -1
+        ) {
+          this.$showMessage({ code: -1, msg: "题目间存在依赖关系" });
+          return;
+        }
+        let tmp = this.questionList[index];
+        let list = this.questionList;
         this.$set(list, index, list[index - 1]);
         this.$set(list, index - 1, tmp);
         list[index].index++;
@@ -396,11 +529,18 @@ export default {
     },
 
     moveDown(index) {
-      if (index === this.sheet.questionList.length - 1) {
+      if (index === this.questionList.length - 1) {
         return;
       } else {
-        let tmp = this.sheet.questionList[index];
-        let list = this.sheet.questionList;
+        if (
+          this.relativeList.indexOf(index) !== -1 ||
+          this.relativeList.indexOf(index + 1) !== -1
+        ) {
+          this.$showMessage({ code: -1, msg: "题目间存在依赖关系" });
+          return;
+        }
+        let tmp = this.questionList[index];
+        let list = this.questionList;
         this.$set(list, index, list[index + 1]);
         this.$set(list, index + 1, tmp);
         list[index].index--;
@@ -410,24 +550,80 @@ export default {
 
     handleSubmit() {
       let newQuestion = _.cloneDeep(this.$store.state.form);
+      let updateList = [];
+      newQuestion.sheet = this.id;
       this.$store.commit("clearForm");
 
+      // 插入到最后，只需要提交新的
       if (this.insertIndex === "" && this.modifiedIndex === "") {
-        newQuestion.index = this.sheet.questionList.length;
-        this.sheet.questionList.splice(
-          this.sheet.questionList.length,
-          0,
-          newQuestion
-        );
-      } else if (this.modifiedIndex !== "") {
-        this.sheet.questionList.splice(this.modifiedIndex, 1, newQuestion);
-        this.modifiedIndex = "";
-      } else {
-        this.sheet.questionList.splice(this.insertIndex, 0, newQuestion);
-        this.resetIndex();
+        newQuestion.index = this.questionList.length;
+        this.$axios
+          .post(`/api/sheets/${this.id}/list`, newQuestion)
+          .then((ret) => {
+            this.$showMessage(ret.data);
+            if (ret.data.code === 200) {
+              this.getQuestionList();
+            }
+          })
+          .catch((err) => {
+            this.$showMessage({ msg: err });
+            console.log(err);
+          });
       }
-    }
-  }
+      // 更改，不需要对其他题目的index进行更新
+      else if (this.modifiedIndex !== "") {
+        updateList.push(newQuestion);
+        this.$axios
+          .put(`/api/sheets/${this.id}/list`, {
+            updateList: updateList,
+          })
+          .then((ret) => {
+            if (ret.data.code === 200) {
+              this.getQuestionList();
+            }
+          })
+          .catch((err) => {
+            this.$showMessage({ msg: err });
+            console.log(err);
+          });
+        this.modifiedIndex = "";
+      }
+      // 插入到中间，需要对其他题目的index进行更新
+      else {
+        const updateList = _.cloneDeep(this.questionList);
+        updateList.splice(this.insertIndex, 0, newQuestion);
+        this.resetIndex(updateList);
+        updateList.splice(this.insertIndex, 1);
+
+        this.$axios
+          .put(`/api/sheets/${this.id}/list`, { updateList: updateList })
+          .then((ret) => {
+            if (ret.data.code === 200) {
+              this.$axios
+                .post(`/api/sheets/${this.id}/list`, newQuestion)
+                .then((ret) => {
+                  this.$showMessage(ret.data);
+                  if (ret.data.code === 200) {
+                    this.getQuestionList();
+                  }
+                })
+                .catch((err) => {
+                  this.$showMessage({ msg: err });
+                  console.log(err);
+                });
+            }
+          })
+          .catch((err) => {
+            console.log(err);
+            this.$showMessage({ msg: err });
+          });
+      }
+    },
+
+    cancelAddRelative() {
+      this.relativeDialogVisible = false;
+    },
+  },
 };
 </script>
 

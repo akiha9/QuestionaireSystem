@@ -2,21 +2,38 @@
   <div>
     <Header>
       <div class="login">
-        <div :style="{'padding-top': '100px'}">
+        <div :style="{ 'padding-top': '100px' }">
           <div class="form-container">
-            <el-form :model="form" :ref="form" :rules="rules" class="form" label-width="40px">
+            <el-form
+              :model="form"
+              :ref="form"
+              :rules="rules"
+              class="form"
+              label-width="40px"
+            >
               <el-form-item label="账号" prop="account">
-                <el-input v-model="form.account" placeholder="请输入账号"></el-input>
+                <el-input
+                  v-model="form.account"
+                  placeholder="请输入账号"
+                  @keyup.enter.native="login(form)"
+                ></el-input>
               </el-form-item>
               <el-form-item label="密码" prop="password">
-                <el-input v-model="form.password" placeholder="请输入密码" show-password></el-input>
+                <el-input
+                  v-model="form.password"
+                  placeholder="请输入密码"
+                  show-password
+                  @keyup.enter.native="login(form)"
+                ></el-input>
               </el-form-item>
             </el-form>
             <span slot="footer" class="dialog-footer">
               <el-button size="medium" @click="login(form)">登 录</el-button>
             </span>
             <div class="bottom">
-              <a href="javascript:;">免费注册</a>
+              <router-link :to="{ name: 'Regist' }">
+                <a href="javascript:;">免费注册</a></router-link
+              >
               <a href="javascript:;">忘记密码</a>
             </div>
           </div>
@@ -35,7 +52,7 @@ export default {
   name: "Login",
   components: {
     Header,
-    Footer
+    Footer,
   },
   data() {
     let checkAccount = (rule, value, callback) => {
@@ -70,30 +87,45 @@ export default {
     return {
       form: {
         account: "",
-        password: ""
+        password: "",
       },
       rules: {
         account: [
-          { required: false, validator: checkAccount, trigger: "blur" }
+          { required: false, validator: checkAccount, trigger: "blur" },
         ],
         password: [
-          { required: false, validator: checkPassword, trigger: "blur" }
-        ]
-      }
+          { required: false, validator: checkPassword, trigger: "blur" },
+        ],
+      },
     };
   },
   methods: {
     login(formName) {
-      this.$refs[formName].validate(valid => {
+      this.$refs[formName].validate((valid) => {
         if (valid) {
-          this.$router.replace("/");
+          this.$axios
+            .post("/api/users/login", {
+              email: this.form.account,
+              password: this.form.password,
+            })
+            .then((ret) => {
+              this.$showMessage(ret.data);
+              if (ret.data.code === 200) {
+                localStorage.setItem("token", ret.data.data.token);
+                this.$router.replace("/");
+              }
+            })
+            .catch((err) => {
+              console.log(err);
+              localStorage.removeItem("token");
+              this.$showMessage({ msg: err });
+            });
         }
       });
-    }
-  }
+    },
+  },
 };
 </script>
-
 
 <style scoped>
 .login {
