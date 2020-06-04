@@ -1,5 +1,7 @@
 # questionaire
 
+问卷调查网站前端部分，样式参考了问卷星
+
 ## Project setup
 ```
 npm install
